@@ -1,0 +1,21 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+# IDE files
+.idea/
+*.iml
+*.xml
+
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Env config
+.env
+
+# OS files
+.DS_Store
