@@ -15,7 +15,7 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-# Dependency: функція для отримання сесії (в FastAPI будемо юзати як Depends)
+# Dependency: функція для отримання сесії
 async def get_async_session() -> AsyncSession:
     async with AsyncSessionLocal() as session:
         yield session
