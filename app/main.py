@@ -4,14 +4,15 @@ import asyncio
 
 
 # Створення таблиць у БД (якщо їх ще нема)
-async def init_db():
+async def create_tables():
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 
 def main():
     print("AutoRiaScraper - перший запуск")
-    asyncio.run(init_db())  # асинхронна ініціалізація БД
+    asyncio.run(create_tables())  # асинхронна ініціалізація БД
+    print("База підʼєднана та таблиці створені")
 
 
 # Цей блок виконується тільки якщо файл запускається напряму
