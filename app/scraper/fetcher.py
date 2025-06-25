@@ -30,7 +30,7 @@ async def get_listing_urls() -> list[str]:
         while True:
             # Зібрати HTML для конкретної сторінки
             url = f"{BASE_URL}?page={page}"
-            html = await fetch_page(session, url)
+            html = await fetch_page(url)
 
             # Витягти URL-ки з цієї сторінки
             urls = await extract_urls_from_page(html)
