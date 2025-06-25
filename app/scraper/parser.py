@@ -66,12 +66,12 @@ def parse_username(soup: BeautifulSoup) -> str | None:
     return safe_get_text(soup, ".seller_info_name.bold")
 
 
-def normalize_phone(phone: str) -> str | None:
+def normalize_phone(phone: str) -> int | None:
     digits = re.sub(r"\D", "", phone)
     if digits.startswith("0") and len(digits) == 10:
-        return "38" + digits  # 0991236666 → 380991236666
+        return int("38" + digits)  # 0991236666 → 380991236666
     if digits.startswith("380") and len(digits) == 12:
-        return digits  # 380991236666 → 380991236666
+        return int(digits)  # 380991236666 → 380991236666
     return None  # якщо формат невалідний
 
 
@@ -191,7 +191,7 @@ async def parse_car_card(url: str) -> dict:
         "images_count": parse_images_count(soup),
         "car_number": parse_car_number(soup),
         "car_vin": parse_vin(soup),
-        "datetime_found": datetime.today().date(),
+        "date_found": datetime.today().date(),
     }
 
 
