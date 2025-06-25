@@ -3,7 +3,10 @@ import aiohttp
 
 # Заголовок, щоб симулювати реальний браузер
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 "
+                  "Safari/537.36",
+    "Referer": "https://auto.ria.com/uk/car/used/",
+    "Accept-Language": "uk-UA,uk;q=0.9,en-US;q=0.8,en;q=0.7"
 }
 
 
