@@ -1,7 +1,18 @@
 import re
 import datetime
 from bs4 import BeautifulSoup
+import re
 from datetime import datetime
+
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+from app.db.crud import create_car
+from app.db.session import get_async_session
 from app.scraper.utils import fetch_page
 
 
@@ -64,6 +75,26 @@ def normalize_phone(phone: str) -> str | None:
         return digits  # 380991236666 → 380991236666
     return None  # якщо формат невалідний
 
+
+def remove_blocking_elements(driver):
+    driver.execute_script("""
+        const selectors = [
+            'div.fc-dialog-overlay',
+            'div.fc-footer-buttons-container',
+            'div.fc-dialog-scrollable-content',
+            'div.fc-consent-root',
+            'div[class*="cookie"]',
+            'div[class*="overlay"]',
+            'div[class*="consent"]',
+            'iframe',
+            '[aria-hidden="true"]'
+        ];
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => el.remove());
+        });
+    """)
+
+
 def parse_phone_number(soup: BeautifulSoup, url: str) -> str | None:
     # Try static HTML first
     raw = safe_get_text(soup, ".phone.bold")
@@ -72,15 +103,49 @@ def parse_phone_number(soup: BeautifulSoup, url: str) -> str | None:
         if normalized:
             return normalized
 
+    # Selenium fallback
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--window-size=1920,1080")
 
-def parse_phone_number(soup: BeautifulSoup) -> str | None:
-    tag = soup.select_one(".phone.bold")
-    if not tag:
+    try:
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(url)
+
+        # Wait body is loaded and remove blockers
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
+        )
+        for _ in range(3):  # repeat just in case JS adds them later
+            remove_blocking_elements(driver)
+            time.sleep(1)
+
+        # Wait and click show button
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, ".phone_show_link"))
+        )
+        button = driver.find_element(By.CSS_SELECTOR, ".phone_show_link")
+        driver.execute_script("arguments[0].scrollIntoView(true);", button)
+        button.click()
+
+        # Wait for number popup
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".popup-successful-call-desk"))
+        )
+        phone = driver.find_element(By.CSS_SELECTOR, ".popup-successful-call-desk").text
+        return normalize_phone(phone.strip())
+
+    except Exception as e:
+        print(f"[Selenium Fail] Could not extract phone from {url}: {e}")
         return None
-    raw = tag.get_text(strip=True)
-    digits = re.sub(r"\D", "", raw)  # замінюємо все, що не цифра(D), на ""
-    return digits
 
+    finally:
+        try:
+            driver.quit()
+        except:
+            pass
 
 
 def parse_image_url(soup: BeautifulSoup) -> str | None:
