@@ -2,6 +2,8 @@ from app.db.session import async_engine
 from app.db.models import Base
 import asyncio
 
+from scheduler.job import start_scheduler
+
 
 # Створення таблиць у БД (якщо їх ще нема)
 async def create_tables():
@@ -9,13 +11,26 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 
-def main():
+async def main():
     print("AutoRiaScraper - перший запуск")
-    asyncio.run(create_tables())  # асинхронна ініціалізація БД
+    await create_tables()  # асинхронна ініціалізація БД
     print("База підʼєднана та таблиці створені")
+
+    # стартуємо планувальник і залишаємо event loop працювати
+    try:
+        start_scheduler()
+    except Exception as e:
+        print(f" Scheduler failed to start: {e}")
+
+    # await run_scraper()
+
+    # Утримуємо головний цикл живим
+    await asyncio.Event().wait()
+
 
 
 # Цей блок виконується тільки якщо файл запускається напряму
 # (а не імпортується як модуль в інші частини проєкту)
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
+
