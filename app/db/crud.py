@@ -11,13 +11,13 @@ async def create_car(session: AsyncSession, car_data: dict) -> None:
 
     # Додаємо об'єкт у поточну сесію
     session.add(new_car)
-
     try:
         await session.commit()
+        print(f"[DB] Saved car: {car_data['title']}")
     except IntegrityError:
         # Якщо дублювання (наприклад, url вже є), відкат змін
         await session.rollback()
-        print(f"Авто вже наявне в базі даних: {car_data['url']}")
+        print(f"[DB] Duplicate skipped: {car_data['url']}")
 
 
 async def is_duplicate(session, url: str) -> bool:
