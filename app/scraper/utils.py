@@ -14,10 +14,6 @@ HEADERS = {
 async def fetch_page(url: str, retries: int = 3, delay: float = 2.0, timeout: int = 20000) -> str:
     for attempt in range(retries):
         try:
-        except aiohttp.ClientError as e:
-            print(f"[Retry {attempt + 1}] Error fetching {url}: {e}")
-            await asyncio.sleep(delay)
-        raise Exception(f"Failed to fetch {url} after {retries} retries")
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()
@@ -26,3 +22,9 @@ async def fetch_page(url: str, retries: int = 3, delay: float = 2.0, timeout: in
                 await browser.close()
                 print(f"[Fetch Success] {url} (length: {len(content)})")
                 return content
+        except PlaywrightTimeoutError as e:
+            print(f"[Timeout Retry {attempt + 1}] Timeout fetching {url}: {e}")
+        except Exception as e:
+            print(f"[Error Retry {attempt + 1}] Failed to fetch {url}: {e}")
+        await asyncio.sleep(delay)
+    raise Exception(f"Failed to fetch {url} after {retries} retries")
