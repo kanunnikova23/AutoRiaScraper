@@ -25,7 +25,7 @@ async def extract_urls_from_page(html: str) -> list[str]:
 # гортаємо сторінки з оголошеннями до того моменту, поки не закінчаться
 async def get_listing_urls() -> list[str]:
     all_urls = []
-    page = 0
+    page = 1
     async with aiohttp.ClientSession() as session:
         while True:
             # Зібрати HTML для конкретної сторінки
