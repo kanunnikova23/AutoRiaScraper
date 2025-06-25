@@ -1,7 +1,6 @@
 import re
 import datetime
-from bs4 import BeautifulSoup
-import re
+import time
 from datetime import datetime
 
 from bs4 import BeautifulSoup
@@ -175,6 +174,7 @@ def parse_vin(soup: BeautifulSoup) -> str | None:
     return safe_get_text(soup, "span.label-vin")
 
 
+#  Основна функція: збирає дані з картки авто
 async def parse_car_card(url: str) -> dict:
     html = await fetch_page(url)
 
