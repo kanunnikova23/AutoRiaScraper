@@ -5,18 +5,40 @@ from datetime import datetime
 from app.scraper.utils import fetch_page
 
 
+# safe_get_text — безпечне отримання тексту або атрибута з HTML-елемента.
+# Повертає None, якщо елемент не знайдено, щоб уникнути помилки 'NoneType' object has no attribute
+def safe_get_text(soup: BeautifulSoup, selector: str, *, attr: str = None) -> str | None:
+    tag = soup.select_one(selector)
+    if not tag:
+        return None
+    if attr:
+        return tag.get(attr)
+    return tag.get_text(strip=True)
+
+
 def parse_price(soup: BeautifulSoup) -> int | None:
-    price_tag = soup.select_one(".price_value strong")
-    if not price_tag:
-        return None
-    try:
-        return int(price_tag
-                   .get_text(strip=True)
-                   .replace("$", "")
-                   .replace(" ", "")
-                   .replace("\u202f", ""))
-    except ValueError:
-        return None
+    # Головна ціна
+    main_price = safe_get_text(soup, ".price_value strong")
+    if main_price and "$" in main_price:
+        try:
+            return int(main_price
+                       .replace("$", "")
+                       .replace("\xa0", "")
+                       .replace(" ", ""))
+        except ValueError:
+            pass
+
+    # Альтернативна ціна в USD
+    usd_price = safe_get_text(soup, 'span[data-currency="USD"]')
+    if usd_price:
+        try:
+            return int(usd_price
+                       .replace("\xa0", "")
+                       .replace(" ", ""))
+        except ValueError:
+            return None
+
+    return None
 
 
 # пробіг авто
