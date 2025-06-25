@@ -193,3 +193,13 @@ async def parse_car_card(url: str) -> dict:
         "car_vin": parse_vin(soup),
         "datetime_found": datetime.today().date(),
     }
+
+
+# Зберігає одне авто в БД одразу після парсингу
+async def parse_and_save_car_data(url: str):
+    try:
+        car_data = await parse_car_card(url)
+        async with get_async_session() as session:
+            await create_car(session, car_data)
+    except Exception as e:
+        print(f"[Error] Failed to parse/save car from {url}: {e}")
