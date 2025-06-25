@@ -41,4 +41,5 @@ async def get_listing_urls() -> list[str]:
             all_urls.extend(urls)
             page += 1  # перейти до наступної сторінки
 
+    print(f"Знайдено {len(urls)} URL-ів")
     return all_urls
