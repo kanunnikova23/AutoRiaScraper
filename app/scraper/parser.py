@@ -191,5 +191,5 @@ async def parse_car_card(url: str) -> dict:
         "images_count": parse_images_count(soup),
         "car_number": parse_car_number(soup),
         "car_vin": parse_vin(soup),
-        "datetime_found": datetime.date.today(),
+        "datetime_found": datetime.today().date(),
     }
