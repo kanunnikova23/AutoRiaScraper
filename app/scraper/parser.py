@@ -95,7 +95,14 @@ def parse_images_count(soup: BeautifulSoup) -> int | None:
 
 def parse_car_number(soup: BeautifulSoup) -> str | None:
     tag = soup.select_one("span.state-num.ua")
-    return tag.get_text(strip=True).replace(" ", "")
+    if tag and tag.contents:
+        raw = tag.contents[0].strip()
+    else:
+        raw = safe_get_text(soup, "span.state-num.ua") or ""
+
+    # Дістає лише валідний номер: 2 літери, 4 цифри, 2 літери
+    match = re.search(r"[A-ZА-ЯІЇЄ]{2}\s?\d{4}\s?[A-ZА-ЯІЇЄ]{2}", raw)
+    return match.group().replace(" ", "") if match else None
 
 
 # VIN
