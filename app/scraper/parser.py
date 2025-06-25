@@ -53,12 +53,24 @@ def parse_odometer(soup: BeautifulSoup) -> int | None:
 
 
 def parse_username(soup: BeautifulSoup) -> str | None:
-    tag = soup.select_one(".seller_info_name.bold")
-    return tag.get_text(strip=True) if tag else None
     return safe_get_text(soup, ".seller_info_name.bold")
+
+
+def normalize_phone(phone: str) -> str | None:
+    digits = re.sub(r"\D", "", phone)
+    if digits.startswith("0") and len(digits) == 10:
+        return "38" + digits  # 0991236666 → 380991236666
+    if digits.startswith("380") and len(digits) == 12:
+        return digits  # 380991236666 → 380991236666
+    return None  # якщо формат невалідний
+
 def parse_phone_number(soup: BeautifulSoup, url: str) -> str | None:
     # Try static HTML first
     raw = safe_get_text(soup, ".phone.bold")
+    if raw and "x" not in raw:
+        normalized = normalize_phone(raw)
+        if normalized:
+            return normalized
 
 
 def parse_phone_number(soup: BeautifulSoup) -> str | None:
