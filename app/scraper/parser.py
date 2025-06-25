@@ -114,7 +114,7 @@ async def parse_car_card(url: str) -> dict:
         "price_usd": parse_price(soup),
         "odometer": parse_odometer(soup),
         "username": parse_username(soup),
-        "phone_number": parse_phone_number(soup),
+        "phone_number": parse_phone_number(soup, url),
         "image_url": parse_image_url(soup),
         "images_count": parse_images_count(soup),
         "car_number": parse_car_number(soup),
