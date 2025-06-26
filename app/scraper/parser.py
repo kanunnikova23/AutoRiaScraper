@@ -206,10 +206,26 @@ async def parse_car_card(browser, url: str) -> dict:
 
 
 # Зберігає одне авто в БД одразу після парсингу
-async def parse_and_save_car_data(url: str):
-    try:
-        car_data = await parse_car_card(url)
-        async with get_async_session() as session:
-            await create_car(session, car_data)
-    except Exception as e:
-        print(f"[Error] Failed to parse/save car from {url}: {e}")
+semaphore = asyncio.Semaphore(5)  # контролюємо паралельність
+
+
+async def limited_parse(browser, url: str):
+    async with semaphore:
+        try:
+            return await parse_car_card(browser, url)
+        except Exception as e:
+            print(f"[Error] Failed to parse car from {url}: {e}")
+            return None
+
+
+async def parse_and_save_car_data(browser, urls: list[str]):
+    tasks = [limited_parse(browser, url) for url in urls]  # створюємо всі задачі
+    results = await asyncio.gather(*tasks, return_exceptions=False)  # виконуємо паралельно
+
+    async with get_async_session() as session:
+        for car_data in results:
+            if car_data:
+                try:
+                    await create_car(session, car_data)
+                except Exception as e:
+                    print(f"[Error] Failed to save car: {e}")
