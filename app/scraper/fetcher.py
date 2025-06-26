@@ -25,12 +25,12 @@ async def extract_urls_from_page(html: str) -> list[str]:
 # гортаємо сторінки з оголошеннями до того моменту, поки не закінчаться
 async def get_listing_urls() -> list[str]:
     all_urls = []
-    page = 0
+    page = 1
     async with aiohttp.ClientSession() as session:
         while True:
             # Зібрати HTML для конкретної сторінки
             url = f"{BASE_URL}?page={page}"
-            html = await fetch_page(session, url)
+            html = await fetch_page(url)
 
             # Витягти URL-ки з цієї сторінки
             urls = await extract_urls_from_page(html)
@@ -41,4 +41,5 @@ async def get_listing_urls() -> list[str]:
             all_urls.extend(urls)
             page += 1  # перейти до наступної сторінки
 
+    print(f"Знайдено {len(urls)} URL-ів")
     return all_urls

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Date
+from sqlalchemy import Column, String, Integer, Date, BigInteger
 from app.db import Base
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -14,9 +14,9 @@ class Car(Base):
     price_usd = Column(Integer)
     odometer = Column(Integer)
     username = Column(String)
-    phone_number = Column(String)
+    phone_number = Column(BigInteger)
     image_url = Column(String)
     images_count = Column(Integer)
     car_number = Column(String, unique=False, nullable=True)
     car_vin = Column(String, unique=False, nullable=True)
-    datetime_found = Column(Date, nullable=False)
+    date_found = Column(Date, nullable=False)

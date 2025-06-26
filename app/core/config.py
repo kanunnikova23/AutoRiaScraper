@@ -21,5 +21,3 @@ class Settings(BaseSettings):
 
 # Створення єдиного екземпляру класу Settings, який буде імпортуватися по всьому проєкту
 settings = Settings()
-
-print("SETTINGS LOADED:", settings.model_dump())  # DEBUG

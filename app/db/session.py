@@ -1,5 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from app.core.config import settings
+from contextlib import asynccontextmanager
+
 
 # Створюємо асинхронний engine на базі URL з .env
 async_engine = create_async_engine(
@@ -15,7 +17,10 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-# Dependency: функція для отримання сесії
+# Асинхронний генератор сесії бази даних.
+# Створює сесію через AsyncSessionLocal, автоматично закриває її після завершення роботи
+# (навіть у випадку помилки), завдяки використанню asynccontextmanager.
+@asynccontextmanager
 async def get_async_session() -> AsyncSession:
     async with AsyncSessionLocal() as session:
         yield session
