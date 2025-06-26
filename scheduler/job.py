@@ -7,10 +7,12 @@ from services.db_backup import dump_database
 
 
 async def scraper_job():
+    print("[SCRAPER] Починаю парсинг...")
     await run_scraper()
 
 
 def dump_job():
+    print("[SCHEDULER] Стартую дамп БД")
     dump_database()
 
 
