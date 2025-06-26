@@ -1,5 +1,5 @@
 import asyncio
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 # Заголовок, щоб симулювати реальний браузер
 HEADERS = {
@@ -10,21 +10,19 @@ HEADERS = {
 }
 
 
-# Отримання всього HTML вмісту однієї сторінки
-async def fetch_page(url: str, retries: int = 3, delay: float = 2.0, timeout: int = 20000) -> str:
+# Функція отримання HTML
+async def fetch_page(browser, url: str, retries: int = 3, delay: float = 2.0, timeout: int = 20000) -> str:
+    page = await browser.new_page()
     for attempt in range(retries):
         try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
-                page = await browser.new_page()
-                await page.goto(url, timeout=timeout)
-                content = await page.content()
-                await browser.close()
-                print(f"[Fetch Success] {url} (length: {len(content)})")
-                return content
+            await page.goto(url, timeout=timeout)
+            content = await page.content()
+            print(f"[Fetch Success] {url} (length: {len(content)})")
+            return content
         except PlaywrightTimeoutError as e:
             print(f"[Timeout Retry {attempt + 1}] Timeout fetching {url}: {e}")
         except Exception as e:
             print(f"[Error Retry {attempt + 1}] Failed to fetch {url}: {e}")
         await asyncio.sleep(delay)
+
     raise Exception(f"Failed to fetch {url} after {retries} retries")

@@ -1,14 +1,10 @@
-import re
+import asyncio
 import datetime
-import time
+import re
 from datetime import datetime
 
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+from playwright.async_api import async_playwright
 
 from app.db.crud import create_car
 from app.db.session import get_async_session
@@ -75,8 +71,8 @@ def normalize_phone(phone: str) -> int | None:
     return None  # якщо формат невалідний
 
 
-def remove_blocking_elements(driver):
-    driver.execute_script("""
+def remove_blocking_elements_js() -> str:
+    return """
         const selectors = [
             'div.fc-dialog-overlay',
             'div.fc-footer-buttons-container',
@@ -91,10 +87,55 @@ def remove_blocking_elements(driver):
         selectors.forEach(sel => {
             document.querySelectorAll(sel).forEach(el => el.remove());
         });
-    """)
+    """
 
 
-def parse_phone_number(soup: BeautifulSoup, url: str) -> str | None:
+async def fetch_phone_with_playwright(url: str) -> str | None:
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context()
+            page = await context.new_page()
+            await page.goto(url, timeout=40000, wait_until="load")  # use full page load
+
+            # JS blocking overlays removal (if needed)
+            await page.evaluate(remove_blocking_elements_js())
+            await page.wait_for_timeout(2000)
+
+            # SCROLL to bottom to trigger JS rendering if needed
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await page.wait_for_timeout(2000)
+
+            # Wait manually for button via locator
+            try:
+                locator = page.locator('button.size-large.conversion[data-action="showBottomPopUp"]')
+                await locator.wait_for(state='visible', timeout=6000)
+                await locator.scroll_into_view_if_needed()
+                await locator.click()
+                await page.wait_for_timeout(2000)
+            except Exception as e:
+                print(f"[Phone Button Missing or Unclickable] {url}: {e}")
+                return None
+
+            # Extract phone number from tel: link
+            try:
+                phone_link = await page.query_selector('a.action-wrapper-link[href^="tel:"]')
+                if phone_link:
+                    tel_href = await phone_link.get_attribute("href")
+                    phone = tel_href.replace("tel:", "").strip()
+                    return normalize_phone(phone)
+            except Exception as e:
+                print(f"[Phone Parse Fail] {url}: {e}")
+                return None
+            finally:
+                await browser.close()
+
+    except Exception as e:
+        print(f"[Playwright Total Fail] {url}: {e}")
+        return None
+
+
+async def parse_phone_number(soup: BeautifulSoup, url: str) -> int | None:
     # Try static HTML first
     raw = safe_get_text(soup, ".phone.bold")
     if raw and "x" not in raw:
@@ -102,49 +143,9 @@ def parse_phone_number(soup: BeautifulSoup, url: str) -> str | None:
         if normalized:
             return normalized
 
-    # Selenium fallback
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--window-size=1920,1080")
-
-    try:
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
-
-        # Wait body is loaded and remove blockers
-        WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "body"))
-        )
-        for _ in range(3):  # repeat just in case JS adds them later
-            remove_blocking_elements(driver)
-            time.sleep(1)
-
-        # Wait and click show button
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, ".phone_show_link"))
-        )
-        button = driver.find_element(By.CSS_SELECTOR, ".phone_show_link")
-        driver.execute_script("arguments[0].scrollIntoView(true);", button)
-        button.click()
-
-        # Wait for number popup
-        WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".popup-successful-call-desk"))
-        )
-        phone = driver.find_element(By.CSS_SELECTOR, ".popup-successful-call-desk").text
-        return normalize_phone(phone.strip())
-
-    except Exception as e:
-        print(f"[Selenium Fail] Could not extract phone from {url}: {e}")
-        return None
-
-    finally:
-        try:
-            driver.quit()
-        except:
-            pass
+    # Fallback to Playwright
+    phone = await fetch_phone_with_playwright(url)
+    return phone
 
 
 def parse_image_url(soup: BeautifulSoup) -> str | None:
@@ -174,25 +175,34 @@ def parse_vin(soup: BeautifulSoup) -> str | None:
     return safe_get_text(soup, "span.label-vin")
 
 
-#  Основна функція: збирає дані з картки авто
-async def parse_car_card(url: str) -> dict:
-    html = await fetch_page(url)
+# Основна функція: збирає дані з картки авто
+async def parse_car_card(browser, url: str) -> dict:
+    page = await browser.new_page()
+    try:
+        await page.goto(url, timeout=20000, wait_until="domcontentloaded")
+        html = await page.content()
+        soup = BeautifulSoup(html, "html.parser")
 
-    soup = BeautifulSoup(html, "html.parser")
+        phone_number = await parse_phone_number(soup, url)
 
-    return {
-        "url": url,
-        "title": safe_get_text(soup, "#heading-cars .head"),
-        "price_usd": parse_price(soup),
-        "odometer": parse_odometer(soup),
-        "username": parse_username(soup),
-        "phone_number": parse_phone_number(soup, url),
-        "image_url": parse_image_url(soup),
-        "images_count": parse_images_count(soup),
-        "car_number": parse_car_number(soup),
-        "car_vin": parse_vin(soup),
-        "date_found": datetime.today().date(),
-    }
+        return {
+            "url": url,
+            "title": safe_get_text(soup, "#heading-cars .head"),
+            "price_usd": parse_price(soup),
+            "odometer": parse_odometer(soup),
+            "username": parse_username(soup),
+            "phone_number": phone_number if phone_number is not None else 0,
+            "image_url": parse_image_url(soup),
+            "images_count": parse_images_count(soup),
+            "car_number": parse_car_number(soup),
+            "car_vin": parse_vin(soup),
+            "date_found": datetime.today().date(),
+        }
+
+    except Exception as e:
+        raise Exception(f"parse_car_card failed for {url}: {e}")
+    finally:
+        await page.close()
 
 
 # Зберігає одне авто в БД одразу після парсингу
