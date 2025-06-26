@@ -2,6 +2,7 @@ from app.db.session import async_engine
 from app.db.models import Base
 import asyncio
 
+from app.scraper import run_scraper
 from scheduler.job import start_scheduler
 
 
@@ -22,7 +23,7 @@ async def main():
     except Exception as e:
         print(f" Scheduler failed to start: {e}")
 
-    # await run_scraper()
+    await run_scraper()
 
     # Утримуємо головний цикл живим
     await asyncio.Event().wait()
