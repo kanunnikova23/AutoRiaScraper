@@ -4,12 +4,6 @@
 Async web scraper for collecting used car listings from [AutoRia.com](https://auto.ria.com/)  
 Built with **Python 3.12**, **Playwright**, **PostgreSQL**, and **Docker Compose**.
 
-
-### Project Structure
-
-<img width="512" alt="Project Structure" src="https://github.com/user-attachments/assets/a45e6bc8-a046-48f8-9c04-d2e8bf5fa0c6" />
-
-
 # Quickstart
 
 ### 1. Clone the project
